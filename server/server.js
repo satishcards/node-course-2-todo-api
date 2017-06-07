@@ -7,6 +7,8 @@ var {User}=require('./models/users');
 var {Todos}=require('./models/todos');
 var app=express();
 app.use(bodyParser.json());
+
+const port =process.env.PORT || 3000;
 app.post('/todos',(req,res)=>{
     var todo=new Todos({
         text:req.body.text
@@ -48,8 +50,22 @@ app.get('/todos/:id',(req,res)=>{
 
 
 })
-app.listen(3000,()=>{
-    console.log("listening on port 3000");
+app.delete('/todos/:id',(req,res)=>{
+    var id=req.params.id;
+    if(!ObjectID.isValid(id)){
+        return res.status(404).send('Id invalid');
+    }
+    Todos.findByIdAndRemove(id).then((result)=>{
+        if(!result)
+            return res.status(404).send('ID not found');
+        res.status(200).send({result});
+    }).catch((err)=>{
+        res.status(404).send('Not able to delete');
+    });
+
+});
+app.listen(port,()=>{
+    console.log(`listening on port ${port}`);
 
 });
 module.exports={app};
