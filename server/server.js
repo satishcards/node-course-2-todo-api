@@ -1,6 +1,7 @@
 const express=require('express');
 const bodyParser=require('body-parser');
 const {ObjectID}=require('mongodb');
+
 const _=require('lodash');
 var {mongoose}=require('./db/mongoose');
 var {User}=require('./models/users');
@@ -83,6 +84,24 @@ app.patch('/todos/:id',(req,res)=>{
         res.status(404).send('Unable to Update');
     });
 });
+
+app.post('/users',(req,res)=>{
+    var body=_.pick(req.body,['email','password']);
+    var user=new User(body);
+    
+    user.save().then(()=>{
+        //res.status(200).send(user);
+        
+        return user.generateAuthToken();
+    }).then((token)=>{
+        console.log(user);
+        res.header('x-auth',token).send(user);
+    }).catch((e)=>{
+        console.log(e);
+        res.status(400).send(e);
+    })
+});
+
 
 app.listen(port,()=>{
     console.log(`listening on port ${port}`);
