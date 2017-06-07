@@ -1,7 +1,7 @@
-var express=require('express');
-var bodyParser=require('body-parser');
-
+const express=require('express');
+const bodyParser=require('body-parser');
 const {ObjectID}=require('mongodb');
+const _=require('lodash');
 var {mongoose}=require('./db/mongoose');
 var {User}=require('./models/users');
 var {Todos}=require('./models/todos');
@@ -64,6 +64,26 @@ app.delete('/todos/:id',(req,res)=>{
     });
 
 });
+app.patch('/todos/:id',(req,res)=>{
+    var id=req.params.id;
+    if(!ObjectID.isValid(id)){
+        return res.status(404).send('Invalid Id');
+    }
+    var body=_.pick(req.body,['text','completed']);
+    if(_.isBoolean(body.completed) && body.completed){
+        body.completedAt=new Date().getTime();
+    }else{
+        body.completed=false;
+        body.completedAt=null;
+    }
+    console.log(body);
+    Todos.findByIdAndUpdate(id,{$set:body},{new:true}).then((todo)=>{
+        res.status(200).send(todo);
+    }).catch((err)=>{
+        res.status(404).send('Unable to Update');
+    });
+});
+
 app.listen(port,()=>{
     console.log(`listening on port ${port}`);
 
