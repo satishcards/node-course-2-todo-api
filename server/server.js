@@ -1,7 +1,7 @@
 var express=require('express');
 var bodyParser=require('body-parser');
 
-
+const {ObjectID}=require('mongodb');
 var {mongoose}=require('./db/mongoose');
 var {User}=require('./models/users');
 var {Todos}=require('./models/todos');
@@ -20,14 +20,34 @@ app.post('/todos',(req,res)=>{
     });
 });
 app.get('/todos',(req,res)=>{
-
+    //var satish='<h1><center>SMARTCHIP</center></h1>'
     Todos.find().then((todos)=>{
-        res.send({todos});
+      //  res.send(satish);
+       res.send({todos});
     },(err)=>{
         res.send(err);
     });
 
 });
+app.get('/todos/:id',(req,res)=>{
+
+    var id=req.params.id;
+    if(!ObjectID.isValid(id)){
+        return res.status(404).send();
+    }
+    Todos.findById(id).then((todo)=>{
+        if(!todo){
+             res.status(400).send("Id not found");
+        }
+        res.status(200).send({todo});
+    },(err)=>{
+        res.status(404).send();
+    }).catch((err)=>{
+        res.status(404).send();
+    });
+
+
+})
 app.listen(3000,()=>{
     console.log("listening on port 3000");
 
