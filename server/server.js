@@ -6,6 +6,7 @@ const _=require('lodash');
 var {mongoose}=require('./db/mongoose');
 var {User}=require('./models/users');
 var {Todos}=require('./models/todos');
+var {authenticate}=require('./middleware/authenticate');
 var app=express();
 app.use(bodyParser.json());
 
@@ -100,6 +101,14 @@ app.post('/users',(req,res)=>{
         console.log(e);
         res.status(400).send(e);
     })
+});
+
+
+
+app.get('/users/me',authenticate,(req,res)=>{
+    res.send(req.user);
+    
+
 });
 
 
