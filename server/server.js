@@ -1,8 +1,11 @@
 const express=require('express');
 const bodyParser=require('body-parser');
 const {ObjectID}=require('mongodb');
+const {bcrypt}=require('bcryptjs');
+require('./config/config');
 
 const _=require('lodash');
+
 var {mongoose}=require('./db/mongoose');
 var {User}=require('./models/users');
 var {Todos}=require('./models/todos');
@@ -11,9 +14,10 @@ var app=express();
 app.use(bodyParser.json());
 
 const port =process.env.PORT || 3000;
-app.post('/todos',(req,res)=>{
+app.post('/todos',authenticate,(req,res)=>{
     var todo=new Todos({
-        text:req.body.text
+        text:req.body.text,
+        _creator:req.user._id
     });
     todo.save().then((doc)=>{
         console.log(doc);
@@ -23,23 +27,24 @@ app.post('/todos',(req,res)=>{
         res.status(400).send(err);
     });
 });
-app.get('/todos',(req,res)=>{
+app.get('/todos',authenticate,(req,res)=>{
     //var satish='<h1><center>SMARTCHIP</center></h1>'
-    Todos.find().then((todos)=>{
+    Todos.find({_creator:req.user._id}).then((todos)=>{
       //  res.send(satish);
+      console.log(todos);
        res.send({todos});
     },(err)=>{
         res.send(err);
     });
 
 });
-app.get('/todos/:id',(req,res)=>{
+app.get('/todos/:id',authenticate,(req,res)=>{
 
     var id=req.params.id;
     if(!ObjectID.isValid(id)){
         return res.status(404).send();
     }
-    Todos.findById(id).then((todo)=>{
+    Todos.findOne({_id:id,_creator:req.user._id}).then((todo)=>{
         if(!todo){
              res.status(400).send("Id not found");
         }
@@ -52,12 +57,12 @@ app.get('/todos/:id',(req,res)=>{
 
 
 })
-app.delete('/todos/:id',(req,res)=>{
+app.delete('/todos/:id',authenticate,(req,res)=>{
     var id=req.params.id;
     if(!ObjectID.isValid(id)){
         return res.status(404).send('Id invalid');
     }
-    Todos.findByIdAndRemove(id).then((result)=>{
+    Todos.findOneAndRemove({_id:id,_creator:req.user._id}).then((result)=>{
         if(!result)
             return res.status(404).send('ID not found');
         res.status(200).send({result});
@@ -66,7 +71,7 @@ app.delete('/todos/:id',(req,res)=>{
     });
 
 });
-app.patch('/todos/:id',(req,res)=>{
+app.patch('/todos/:id',authenticate,(req,res)=>{
     var id=req.params.id;
     if(!ObjectID.isValid(id)){
         return res.status(404).send('Invalid Id');
@@ -79,7 +84,7 @@ app.patch('/todos/:id',(req,res)=>{
         body.completedAt=null;
     }
     console.log(body);
-    Todos.findByIdAndUpdate(id,{$set:body},{new:true}).then((todo)=>{
+    Todos.findOneAndUpdate({_id:id,_creator:req.user._id},{$set:body},{new:true}).then((todo)=>{
         res.status(200).send(todo);
     }).catch((err)=>{
         res.status(404).send('Unable to Update');
@@ -102,6 +107,33 @@ app.post('/users',(req,res)=>{
         res.status(400).send(e);
     })
 });
+app.post('/users/login',(req,res)=>{
+    var body=_.pick(req.body,['email','password']);
+    //var user =new User(body);
+    var email=body.email;
+    var password=body.password;
+    User.findByCredentials(body).then((user)=>{
+        //res.send(user);
+       return user.generateAuthToken().then((token)=>{
+            res.header('x-auth',token).send(user);
+        });
+    }).catch((e)=>{
+        res.status(400).send();
+    });
+       
+
+});
+app.delete('/users/me/token',authenticate,(req,res)=>{
+    req.user.removeToken(req.token).then(()=>{
+        res.status(200).send();
+    },(e)=>{
+        console.log(e);
+    res.status(400);
+});
+});
+    
+
+
 
 
 
